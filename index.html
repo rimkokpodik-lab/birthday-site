@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Отправка даты рождения</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A8%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<main class="shell">
+  <header class="brand">
+    <div class="brand-mark">📨</div>
+    <div>
+      <div class="brand-school" id="schoolName">Моя школа</div>
+      <div class="brand-sub">Приём дат рождения · файл .txt</div>
+    </div>
+  </header>
+
+  <section class="card">
+    <h1>Отправьте дату рождения преподавателю</h1>
+    <p class="lead">Данные уходят на сайт обычным <b>.txt</b>-файлом. Преподаватель скачивает ваш файл из своего кабинета.</p>
+
+    <ol class="steps">
+      <li>
+        <b>Скачайте файл <code class="inline">otpravka.bat</code></b> — внутри уже прописан адрес этого сайта.<br>
+        <a class="btn btn-primary btn-sm" href="/api/bat" download style="margin-top:10px;">⬇ Скачать .bat</a>
+      </li>
+      <li><b>Запустите его двойным щелчком.</b> В чёрном окне введите ФИО, группу и дату рождения в формате <code class="inline">ДД.ММ.ГГГГ</code>.</li>
+      <li><b>Готово.</b> Файл с вашими данными появится в кабинете преподавателя, а вы увидите сообщение об успехе.</li>
+    </ol>
+
+    <div class="endpoint" title="Адрес, куда отправляется txt-файл">
+      <span class="muted">Адрес приёма:</span>
+      <b id="endpoint">—</b>
+      <button class="btn btn-ghost btn-sm" type="button" id="copyEndpoint" style="margin-left:auto;">Копировать</button>
+    </div>
+    <p class="hint">Для программ: <code class="inline">POST</code> на этот адрес, тело запроса — текст файла (UTF-8). Заголовок <code class="inline">X-Filename</code> необязателен.</p>
+  </section>
+
+  <!-- ---------- альтернатива: отправить прямо с сайта ---------- -->
+  <details class="panel">
+    <summary>Нет Windows или .bat не запускается — отправить отсюда</summary>
+
+    <p>Заполните поля — сайт сам соберёт и отправит txt-файл.</p>
+    <form id="form">
+      <label class="field">
+        <span class="label">Фамилия и имя <em>*</em></span>
+        <input id="name" type="text" placeholder="Иванов Иван" maxlength="120" autocomplete="name">
+      </label>
+      <div class="grid-2">
+        <label class="field">
+          <span class="label" id="groupLabel">Группа</span>
+          <input id="group" type="text" placeholder="Например, 9Б" maxlength="20" autocomplete="off">
+        </label>
+        <label class="field">
+          <span class="label">Дата рождения <em>*</em></span>
+          <input id="bdate" type="date" min="1900-01-01" required>
+        </label>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" id="sendBtn">Отправить преподавателю</button>
+      <p class="form-error" id="error" role="alert"></p>
+      <p class="import-result" id="result"></p>
+    </form>
+
+    <div class="mt" style="border-top:1px dashed var(--line); padding-top:16px;">
+      <p class="small muted" style="margin-bottom:8px;">…или отправьте уже готовый текстовый файл (.txt / .csv):</p>
+      <input type="file" id="fileInput" accept=".txt,.csv,.bat,.cmd,.md,.log,text/plain,text/csv">
+      <button class="btn btn-soft btn-block mt" type="button" id="fileSendBtn">Отправить выбранный файл</button>
+      <p class="import-result" id="fileResult"></p>
+    </div>
+  </details>
+
+  <!-- ---------- пример для программистов ---------- -->
+  <details class="panel">
+    <summary>Отправить из кода (curl / PowerShell / Python)</summary>
+    <p class="small">Все примеры отправляют на <code class="inline" id="endpoint2">—</code></p>
+
+    <p class="label" style="margin-top:14px;">curl</p>
+    <div class="code-box">
+      <button class="copy-btn" data-copy="curl" type="button">Копировать</button>
+      <pre id="curl">curl -X POST -H "Content-Type: text/plain; charset=utf-8" --data-binary @birthday.txt "<span class="ep">...</span>/api/upload"</pre>
+    </div>
+
+    <p class="label" style="margin-top:16px;">PowerShell</p>
+    <div class="code-box">
+      <button class="copy-btn" data-copy="ps" type="button">Копировать</button>
+      <pre id="ps">$body = [IO.File]::ReadAllBytes("birthday.txt")
+$wc = New-Object Net.WebClient
+$wc.Headers.Add("X-Filename", "birthday.txt")
+$wc.UploadData("<span class="ep">...</span>/api/upload", "POST", $body)</pre>
+    </div>
+
+    <p class="label" style="margin-top:16px;">Python</p>
+    <div class="code-box">
+      <button class="copy-btn" data-copy="py" type="button">Копировать</button>
+      <pre id="py">import urllib.request
+
+data = open("birthday.txt", "rb").read()
+req = urllib.request.Request(
+    "<span class="ep">...</span>/api/upload",
+    data=data,
+    headers={"Content-Type": "text/plain; charset=utf-8",
+             "X-Filename": "birthday.txt"},
+)
+print(urllib.request.urlopen(req).read().decode("utf-8"))</pre>
+    </div>
+  </details>
+
+  <div class="counter muted small" id="counter" style="text-align:center; margin-top:18px;"></div>
+
+  <footer class="foot">
+    <a href="/admin" class="foot-link">Вход для преподавателя →</a>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var ORIGIN = window.location.origin;
+
+  function plural(n, one, few, many) {
+    var a = Math.abs(n) % 100, b = a % 10;
+    if (a > 10 && a < 20) return many;
+    if (b > 1 && b < 5) return few;
+    if (b === 1) return one;
+    return many;
+  }
+
+  // подставляем адрес сайта во все примеры
+  $('endpoint').textContent = ORIGIN + '/api/upload';
+  $('endpoint2').textContent = ORIGIN + '/api/upload';
+  Array.prototype.forEach.call(document.querySelectorAll('.ep'), function (el) { el.textContent = ORIGIN; });
+
+  $('copyEndpoint').addEventListener('click', function () {
+    copy(ORIGIN + '/api/upload', $('copyEndpoint'), 'Копировать');
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.copy-btn'), function (btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.getAttribute('data-copy');
+      var text = $(id).textContent;
+      copy(text, btn, 'Копировать');
+    });
+  });
+
+  function copy(text, btn, label) {
+    var done = function () {
+      btn.textContent = 'Скопировано ✓';
+      setTimeout(function () { btn.textContent = label; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fallback);
+    } else { fallback(); }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch (_) { /* ничего */ }
+      document.body.removeChild(ta);
+    }
+  }
+
+  // ограничение даты
+  var t = new Date();
+  $('bdate').max = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+
+  fetch('/api/info').then(function (r) { return r.json(); }).then(function (info) {
+    if (info.schoolName) {
+      $('schoolName').textContent = info.schoolName;
+      document.title = 'Отправка даты рождения — ' + info.schoolName;
+    }
+    if (info.groupLabel) $('groupLabel').textContent = info.groupLabel;
+    var n = info.inboxCount || 0;
+    $('counter').textContent = n
+      ? 'Преподаватель уже получил ' + n + ' ' + plural(n, 'файл', 'файла', 'файлов')
+      : 'Пока никто не отправлял — станьте первым';
+  }).catch(function () { /* сайт офлайн */ });
+
+  function sendText(text, filename) {
+    return fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Filename': filename, 'Accept': 'application/json' },
+      body: text
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); });
+  }
+
+  // форма
+  $('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    $('error').textContent = '';
+    var name = $('name').value.trim();
+    var group = $('group').value.trim();
+    var bd = $('bdate').value;
+    if (name.length < 2) { $('error').textContent = 'Напишите фамилию и имя.'; $('name').focus(); return; }
+    if (!bd) { $('error').textContent = 'Выберите дату рождения.'; $('bdate').focus(); return; }
+    var p = bd.split('-');
+    var text = 'ФИО: ' + name + '\n' + 'Группа: ' + group + '\n' + 'Дата рождения: ' + p[2] + '.' + p[1] + '.' + p[0] + '\n';
+    $('sendBtn').disabled = true;
+    $('sendBtn').textContent = 'Отправляем…';
+    sendText(text, 'birthday-web.txt').then(function (res) {
+      if (!res.ok) throw new Error(res.d.error || 'Ошибка отправки');
+      $('result').textContent = res.d.line || 'Готово: файл отправлен преподавателю.';
+      $('result').className = 'import-result ok';
+      $('form').reset();
+    }).catch(function (err) {
+      $('error').textContent = err.message;
+      $('result').textContent = '';
+    }).finally(function () {
+      $('sendBtn').disabled = false;
+      $('sendBtn').textContent = 'Отправить преподавателю';
+    });
+  });
+
+  // файл
+  $('fileSendBtn').addEventListener('click', function () {
+    var file = $('fileInput').files && $('fileInput').files[0];
+    if (!file) { $('fileResult').textContent = 'Сначала выберите файл.'; $('fileResult').className = 'import-result err'; return; }
+    var reader = new FileReader();
+    $('fileSendBtn').disabled = true;
+    reader.onload = function () {
+      var buf = reader.result;
+      var text = new TextDecoder('utf-8').decode(buf);
+      if (text.indexOf('\uFFFD') !== -1) {
+        try { text = new TextDecoder('windows-1251').decode(buf); } catch (_) {}
+      }
+      sendText(text.replace(/^\uFEFF/, ''), file.name).then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || 'Ошибка отправки');
+        $('fileResult').textContent = 'Файл «' + file.name + '» отправлен. ' + (res.d.line || '');
+        $('fileResult').className = 'import-result ok';
+        $('fileInput').value = '';
+      }).catch(function (err) {
+        $('fileResult').textContent = err.message;
+        $('fileResult').className = 'import-result err';
+      }).finally(function () { $('fileSendBtn').disabled = false; });
+    };
+    reader.readAsArrayBuffer(file);
+  });
+})();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a51a7a7c98e1ef36',t:'MTc5MzE5NjE0OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

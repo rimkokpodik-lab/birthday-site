@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кабинет преподавателя — приём дат рождения</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A5%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<main class="shell shell-wide">
+  <header class="brand brand-row">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="brand-mark">📥</div>
+      <div>
+        <div class="brand-school" id="schoolName">Моя школа</div>
+        <div class="brand-sub">Кабинет преподавателя · приём .txt</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <a href="/" class="btn btn-ghost btn-sm">Страница студентов</a>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn" hidden>Выйти</button>
+    </div>
+  </header>
+
+  <!-- ---------------- вход ---------------- -->
+  <section class="card login-card" id="loginCard">
+    <div class="login-icon">🔒</div>
+    <h1>Вход для преподавателя</h1>
+    <p class="lead">Пароль нужен, чтобы файлы студентов видели только вы.</p>
+    <form id="loginForm">
+      <label class="field">
+        <span class="label">Пароль</span>
+        <input id="password" type="password" placeholder="••••••" autocomplete="current-password">
+      </label>
+      <button class="btn btn-primary btn-block" type="submit" id="loginBtn">Войти</button>
+      <p class="form-error" id="loginError" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- ---------------- кабинет ---------------- -->
+  <section id="dash" hidden>
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="inbox" type="button">📥 Входящие файлы <span class="count" id="tabInboxCount">0</span></button>
+      <button class="tab" data-tab="list" type="button">🎂 Список дней рождения</button>
+      <button class="tab" data-tab="bat" type="button">⚙️ Настройки и .bat</button>
+    </div>
+
+    <!-- ================= ВХОДЯЩИЕ ================= -->
+    <div id="tab-inbox">
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Файлов получено</div>
+          <div class="stat-value" id="statFiles">0</div>
+        </div>
+        <div class="stat accent">
+          <div class="stat-label">Пришло сегодня</div>
+          <div class="stat-value" id="statTodayFiles">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Учеников в списке</div>
+          <div class="stat-value" id="statStudents">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">День рождения сегодня</div>
+          <div class="stat-value" id="statBdayToday">0</div>
+        </div>
+      </div>
+
+      <div class="card toolbar">
+        <input type="text" id="inboxSearch" placeholder="Поиск по ФИО, группе или имени файла…" autocomplete="off">
+        <button class="btn btn-soft" id="zipBtn" type="button">⬇ Скачать все (.zip)</button>
+        <button class="btn btn-soft" id="allTxtBtn" type="button">⬇ Все в один .txt</button>
+        <button class="btn btn-ghost" id="refreshBtn" type="button" title="Обновить">⟳</button>
+        <button class="btn btn-danger" id="clearInboxBtn" type="button">Очистить</button>
+      </div>
+      <p class="hint" style="margin:-6px 4px 16px;">
+        Файл сохраняется на сервере в папке <code class="inline">data/inbox</code>. Кнопки «Скачать» отдают исходный txt,
+        «Показать» — текст файла прямо в браузере. В предпросмотре Arena скачивание может блокироваться — тогда используйте «Показать» и копирование.
+      </p>
+
+      <div class="card table-card">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="cell-num">№</th>
+                <th>Получен</th>
+                <th>ФИО из файла</th>
+                <th>Группа</th>
+                <th>Дата рождения</th>
+                <th>Файл</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="inboxBody"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="inboxEmpty" hidden>
+          <span class="big">📭</span>
+          Пока ни одного файла.<br>
+          Откройте вкладку «Настройки и .bat», скачайте bat-файл и раздайте его студентам.
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= СПИСОК ДР ================= -->
+    <div id="tab-list" hidden>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Всего в списке</div>
+          <div class="stat-value" id="statList">0</div>
+        </div>
+        <div class="stat accent">
+          <div class="stat-label">День рождения сегодня</div>
+          <div class="stat-value" id="statListToday">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Ближайший день рождения</div>
+          <div class="stat-value small" id="statNext">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Групп</div>
+          <div class="stat-value" id="statGroups">0</div>
+        </div>
+      </div>
+
+      <div class="card toolbar">
+        <input type="text" id="search" placeholder="Поиск по ФИО или группе…" autocomplete="off">
+        <select id="groupFilter"><option value="">Все группы</option></select>
+        <select id="sortBy">
+          <option value="upcoming">Сначала ближайшие ДР</option>
+          <option value="date">По дате рождения (янв → дек)</option>
+          <option value="name">По алфавиту</option>
+          <option value="group">По группам</option>
+        </select>
+        <button class="btn btn-soft" id="downloadTxt" type="button">⬇ TXT</button>
+        <button class="btn btn-soft" id="downloadCsv" type="button">⬇ CSV</button>
+        <button class="btn btn-ghost" id="showListBtn" type="button">Показать текст</button>
+      </div>
+
+      <details class="panel" style="margin-top:0; margin-bottom:18px;">
+        <summary>Добавить ученика вручную</summary>
+        <form id="addForm" class="mt">
+          <div class="grid-2">
+            <label class="field"><span class="label">Фамилия и имя</span><input id="addName" type="text" placeholder="Иванов Иван" maxlength="120"></label>
+            <label class="field"><span class="label groupLabel">Группа</span><input id="addGroup" type="text" placeholder="9Б" maxlength="20"></label>
+          </div>
+          <label class="field"><span class="label">Дата рождения</span><input id="addBdate" type="date" min="1900-01-01"></label>
+          <button class="btn btn-primary" type="submit">Добавить</button>
+          <p class="import-result" id="addResult"></p>
+        </form>
+      </details>
+
+      <div class="card table-card">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="cell-num">№</th>
+                <th>ФИО</th>
+                <th>Группа</th>
+                <th>Дата рождения</th>
+                <th>Возраст</th>
+                <th>Ближайший ДР</th>
+                <th>Через</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="listBody"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="listEmpty" hidden>
+          <span class="big">🎈</span>
+          Список пуст. Он заполняется автоматически из присланных файлов.
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= НАСТРОЙКИ И BAT ================= -->
+    <div id="tab-bat" hidden>
+      <div class="card">
+        <h2>1. Адрес сайта</h2>
+        <p class="lead">Именно этот адрес попадёт внутрь bat-файла, который вы раздадите студентам.</p>
+        <div class="note note-warn" id="addrWarning" hidden>
+          <span class="ico">⚠️</span>
+          <div id="addrWarningText"></div>
+        </div>
+        <div class="endpoint" style="margin-bottom:14px;">
+          <span class="muted">Приём файлов:</span>
+          <b id="currentEndpoint">—</b>
+          <button class="btn btn-ghost btn-sm" id="copyCurrentEndpoint" type="button" style="margin-left:auto;">Копировать</button>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">Публичный адрес сайта</span>
+            <input id="publicUrl" type="url" placeholder="https://dni-rozhdeniya.ru">
+            <span class="hint">Если сайт открыт по этому же адресу — оставьте поле пустым, адрес подставится автоматически.</span>
+            <div id="lanBox" style="margin-top:8px;"></div>
+          </label>
+          <label class="field">
+            <span class="label">Кодировка bat-файла</span>
+            <select id="batEnc">
+              <option value="cp866">CP866 — для Windows по умолчанию (рекомендуется)</option>
+              <option value="utf8">UTF-8 — если в консоли включён 65001</option>
+            </select>
+          </label>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="downloadBat" type="button">⬇ Скачать .bat</button>
+          <button class="btn btn-soft" id="previewBat" type="button">Показать содержимое</button>
+          <button class="btn btn-ghost" id="saveBatTexts" type="button">💾 Сохранить тексты</button>
+        </div>
+        <p class="hint" id="batTextsStatus" style="margin-top:10px;"></p>
+      </div>
+
+      <div class="card">
+        <h2>Тексты внутри bat-файла</h2>
+        <p class="lead">Всё, что студент читает в чёрном окне, можно переписать своими словами. После правки нажмите «Сохранить тексты» и скачайте bat заново.</p>
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">Заголовок окна</span>
+            <input id="bt_window" type="text" maxlength="100" data-bat="window" placeholder="Отправка даты рождения">
+          </label>
+          <label class="field">
+            <span class="label">Крупный заголовок в окне</span>
+            <input id="bt_header" type="text" maxlength="100" data-bat="header" placeholder="ОТПРАВКА ДАТЫ РОЖДЕНИЯ">
+          </label>
+          <label class="field">
+            <span class="label">Вопрос про ФИО</span>
+            <input id="bt_namePrompt" type="text" maxlength="100" data-bat="namePrompt" placeholder="Фамилия и имя">
+          </label>
+          <label class="field">
+            <span class="label">Вопрос про группу</span>
+            <input id="bt_groupPrompt" type="text" maxlength="100" data-bat="groupPrompt" placeholder="Группа (можно пропустить)">
+          </label>
+          <label class="field">
+            <span class="label">Вопрос про дату</span>
+            <input id="bt_datePrompt" type="text" maxlength="100" data-bat="datePrompt" placeholder="Дата рождения (ДД.ММ.ГГГГ)">
+          </label>
+          <label class="field">
+            <span class="label">Перед отправкой</span>
+            <input id="bt_sending" type="text" maxlength="100" data-bat="sending" placeholder="Отправляю файл на сайт...">
+          </label>
+          <label class="field">
+            <span class="label">Сообщение об успехе</span>
+            <input id="bt_success" type="text" maxlength="100" data-bat="success" placeholder="Готово! Данные получены преподавателем.">
+          </label>
+          <label class="field">
+            <span class="label">Сообщение об ошибке</span>
+            <input id="bt_fail" type="text" maxlength="100" data-bat="fail" placeholder="Не удалось отправить файл автоматически.">
+          </label>
+        </div>
+        <p class="hint">Символы <code class="inline">% ! ^ &lt; &gt; | &amp; "</code> в bat-файле ломают скрипт — сайт уберёт их автоматически.</p>
+      </div>
+
+      <div class="card">
+        <h2>2. Как это работает</h2>
+        <ol class="steps" style="margin-top:14px;">
+          <li><b>Раздайте студентам файл</b> <code class="inline">otpravka-dnya-rozhdeniya.bat</code> (почта, чат, диск).</li>
+          <li><b>Студент запускает его</b>, вводит ФИО, группу и дату рождения.</li>
+          <li><b>bat отправляет txt</b> на адрес <code class="inline">/api/upload</code> — файл появляется во «Входящих».</li>
+          <li><b>Вы скачиваете файлы</b> по одному, архивом .zip или одним общим .txt.</li>
+        </ol>
+        <div class="note note-ok">
+          <span class="ico">💡</span>
+          <div>Студенты могут присылать файл и программно — из curl, PowerShell или Python. Примеры есть на странице <a href="/" target="_blank" rel="noopener">для студентов</a>.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>3. Оформление и доступ</h2>
+        <form id="settingsForm" class="mt">
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Название школы / курса</span>
+              <input id="schoolNameInput" type="text" maxlength="80" placeholder="Школа №5, г. Мыски">
+            </label>
+            <label class="field">
+              <span class="label">Как называть группу</span>
+              <input id="groupLabelInput" type="text" maxlength="30" placeholder="Группа">
+            </label>
+          </div>
+          <label class="field">
+            <span class="label">Новый пароль преподавателя</span>
+            <input id="passwordInput" type="password" autocomplete="new-password" placeholder="оставьте пустым, чтобы не менять">
+          </label>
+          <button class="btn btn-primary" type="submit" id="saveSettings">Сохранить</button>
+          <p class="import-result" id="settingsResult"></p>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>4. Как выложить сайт в интернет</h2>
+        <p class="lead" style="margin-bottom:12px;">Сайт работает на Node.js и не требует базы данных — папку <code class="inline">birthday-site</code> достаточно запустить на любом сервере.</p>
+        <ul class="steps" style="margin-bottom:0;">
+          <li><b>Локально в кабинете:</b> <code class="inline">start.bat</code> → сайт на <code class="inline">http://localhost:3000</code>, студентам в той же сети — <code class="inline">http://ваш-IP:3000</code>.</li>
+          <li><b>Постоянная ссылка:</b> Render / Railway / VPS — команда запуска <code class="inline">node server.js</code>, переменные <code class="inline">PORT</code> и <code class="inline">ADMIN_PASSWORD</code>.</li>
+          <li><b>Впишите адрес</b> в поле «Публичный адрес сайта» выше — bat-файл будет отправлять файлы именно туда.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ---------------- модальное окно ---------------- -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle">Файл</div>
+      <button class="icon-btn" id="modalClose" type="button" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="modal-body">
+      <pre id="modalPre"></pre>
+      <div class="modal-actions">
+        <button class="btn btn-primary btn-sm" id="copyBtn" type="button">Скопировать</button>
+        <a class="btn btn-soft btn-sm" id="modalDownload" href="#" download>Скачать файл</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var key = '';
+  var inbox = [];
+  var entries = [];
+  var groups = [];
+  var groupLabel = 'Группа';
+  var timer = null;
+  var ORIGIN = window.location.origin;
+
+  function plural(n, one, few, many) {
+    var a = Math.abs(n) % 100, b = a % 10;
+    if (a > 10 && a < 20) return many;
+    if (b > 1 && b < 5) return few;
+    if (b === 1) return one;
+    return many;
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function bytes(n) {
+    if (n < 1024) return n + ' Б';
+    return (n / 1024).toFixed(1).replace('.', ',') + ' КБ';
+  }
+  function shortName(full) {
+    var p = String(full).trim().split(/\s+/);
+    return p.length >= 2 ? p[0] : p[0];
+  }
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ 'x-admin-key': key }, opts.headers || {});
+    return fetch(path, opts).then(function (r) {
+      return r.json().then(function (d) {
+        if (!r.ok) { var e = new Error(d.error || 'Ошибка запроса'); e.status = r.status; throw e; }
+        return d;
+      });
+    });
+  }
+
+  /* ---------------- вход ---------------- */
+  $('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var pass = $('password').value;
+    $('loginError').textContent = '';
+    $('loginBtn').disabled = true;
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || 'Ошибка входа');
+        key = pass;
+        $('loginCard').hidden = true;
+        $('dash').hidden = false;
+        $('logoutBtn').hidden = false;
+        $('password').value = '';
+        loadAll();
+        if (timer) clearInterval(timer);
+        timer = setInterval(function () { loadInbox(true); }, 15000);
+      })
+      .catch(function (err) { $('loginError').textContent = err.message; })
+      .finally(function () { $('loginBtn').disabled = false; });
+  });
+
+  $('logoutBtn').addEventListener('click', function () {
+    key = ''; inbox = []; entries = [];
+    if (timer) { clearInterval(timer); timer = null; }
+    $('dash').hidden = true;
+    $('loginCard').hidden = false;
+    $('logoutBtn').hidden = true;
+  });
+
+  /* ---------------- вкладки ---------------- */
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (btn) {
+    btn.addEventListener('click', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var name = btn.getAttribute('data-tab');
+      ['inbox', 'list', 'bat'].forEach(function (t) { $('tab-' + t).hidden = (t !== name); });
+    });
+  });
+
+  /* ---------------- загрузка данных ---------------- */
+  function loadAll() {
+    loadOverview();
+    loadInbox();
+    loadEntries();
+    loadSettings();
+  }
+
+  function loadOverview() {
+    api('/api/admin/overview').then(function (d) {
+      if (d.schoolName) {
+        $('schoolName').textContent = d.schoolName;
+        document.title = 'Кабинет преподавателя — ' + d.schoolName;
+      }
+      groupLabel = d.groupLabel || 'Группа';
+      Array.prototype.forEach.call(document.querySelectorAll('.groupLabel'), function (el) { el.textContent = groupLabel; });
+      groups = d.groups || [];
+      renderAddressHelp(d);
+      var s = d.stats;
+      $('statFiles').textContent = s.files;
+      $('statTodayFiles').textContent = s.todayFiles;
+      $('statStudents').textContent = s.students;
+      $('statBdayToday').textContent = s.todayBirthdays;
+      $('statList').textContent = s.students;
+      $('statListToday').textContent = s.todayBirthdays;
+      $('statGroups').textContent = groups.length;
+      $('statNext').textContent = s.nextName
+        ? shortName(s.nextName) + ' — через ' + s.nextDays + ' ' + plural(s.nextDays, 'день', 'дня', 'дней') + ' (' + String(s.nextDate).slice(0, 5) + ')'
+        : (s.students ? 'все сегодня 🎉' : '—');
+      var sel = $('groupFilter'), cur = sel.value;
+      sel.innerHTML = '<option value="">Все группы</option>' + groups.map(function (g) {
+        return '<option value="' + esc(g) + '">' + esc(g) + '</option>';
+      }).join('');
+      sel.value = cur;
+    }).catch(function (err) { if (err.status === 401) sessionExpired(); });
+  }
+
+  function sessionExpired() {
+    key = '';
+    if (timer) { clearInterval(timer); timer = null; }
+    $('dash').hidden = true;
+    $('loginCard').hidden = false;
+    $('logoutBtn').hidden = true;
+    $('loginError').textContent = 'Сессия истекла — войдите снова.';
+  }
+
+  function renderAddressHelp(data) {
+    var lan = data.lan || [];
+    var localUrl = data.localUrl || ('http://localhost:' + (data.port || 3000));
+
+    // кнопки с адресами в локальной сети
+    var box = $('lanBox');
+    if (lan.length) {
+      box.innerHTML = '<span class="hint" style="display:block;margin-bottom:2px;">Адрес этого компьютера в сети — нажмите, чтобы подставить:</span>' +
+        lan.map(function (l) {
+          return '<button type="button" class="lan-btn" data-url="' + esc(l.url) + '">' +
+            esc(l.url) + ' <span class="muted" style="font-family:inherit">(' + esc(l.iface) + ')</span></button>';
+        }).join('');
+    } else {
+      box.innerHTML = '<span class="hint">Сетевые адреса не найдены — возможно, компьютер не подключён к Wi-Fi или кабелю.</span>';
+    }
+
+    // предупреждение, если кабинет открыт по адресу, недоступному студентам
+    var host = window.location.hostname;
+    var warn = $('addrWarning');
+    var text = $('addrWarningText');
+    if (host === 'localhost' || host === '127.0.0.1') {
+      warn.hidden = false;
+      text.innerHTML = 'Вы открыли кабинет по адресу <b>' + esc(window.location.origin) + '</b> — он работает <b>только на этом компьютере</b>. ' +
+        'Студенты по нему не подключатся. ' +
+        (lan.length
+          ? 'Для общей сети используйте адрес вида <b>' + esc(lan[0].url) + '</b> (нажмите кнопку выше), а для интернета — опубликуйте сайт (см. пункт 4 ниже).'
+          : 'Для общей сети нужен адрес вида <b>http://192.168.x.x:' + (data.port || 3000) + '</b>, для интернета — публикация сайта (пункт 4 ниже).');
+    } else if (/\.e2b\.app$/.test(host)) {
+      warn.hidden = false;
+      text.innerHTML = 'Это <b>временный предпросмотр</b>. Такой адрес закрыт паролем платформы, поэтому студенты не смогут отправить на него файл. ' +
+        'Запустите сайт у себя на компьютере и используйте адрес <b>' + esc(lan.length ? lan[0].url : localUrl) + '</b>, либо опубликуйте сайт в интернете (пункт 4 ниже).';
+    } else {
+      warn.hidden = true;
+    }
+  }
+
+  function loadInbox(silent) {
+    api('/api/admin/inbox').then(function (d) {
+      inbox = d.items || [];
+      $('tabInboxCount').textContent = inbox.length;
+      renderInbox();
+    }).catch(function (err) {
+      if (err.status === 401) sessionExpired();
+      else if (!silent) console.warn(err.message);
+    });
+  }
+
+  function loadEntries() {
+    api('/api/admin/entries').then(function (d) {
+      entries = d.items || [];
+      renderEntries();
+    }).catch(function (err) { if (err.status === 401) sessionExpired(); });
+  }
+
+  function loadSettings() {
+    api('/api/admin/settings').then(function (d) {
+      $('schoolNameInput').value = d.schoolName || '';
+      $('groupLabelInput').value = d.groupLabel || '';
+      $('publicUrl').value = d.publicUrl || '';
+      fillBatTexts(d.batTexts || {});
+      updateEndpoint();
+    }).catch(function (err) { if (err.status === 401) sessionExpired(); });
+  }
+
+  function fillBatTexts(texts) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-bat]'), function (input) {
+      var k = input.getAttribute('data-bat');
+      input.value = texts[k] || '';
+    });
+  }
+
+  function collectBatTexts() {
+    var out = {};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-bat]'), function (input) {
+      out[input.getAttribute('data-bat')] = input.value.trim();
+    });
+    return out;
+  }
+
+  $('saveBatTexts').addEventListener('click', function () {
+    var status = $('batTextsStatus');
+    status.textContent = 'Сохраняю…';
+    status.className = 'hint';
+    api('/api/admin/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batTexts: collectBatTexts() })
+    }).then(function (d) {
+      fillBatTexts(d.batTexts || {});
+      status.textContent = 'Тексты сохранены. Теперь скачайте .bat заново — правки попадут в файл.';
+      status.style.color = 'var(--green)';
+    }).catch(function (err) {
+      status.textContent = err.message;
+      status.style.color = 'var(--red)';
+    });
+  });
+
+  /* ---------------- отрисовка: входящие ---------------- */
+  function renderInbox() {
+    var q = $('inboxSearch').value.trim().toLowerCase();
+    var list = inbox.filter(function (f) {
+      if (!q) return true;
+      var hay = [f.filename, f.parsed && f.parsed.name, f.parsed && f.parsed.group, f.parsed && f.parsed.bdate]
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+
+    $('inboxEmpty').hidden = list.length > 0;
+    $('inboxBody').innerHTML = list.map(function (f, i) {
+      var p = f.parsed || {};
+      var isToday = p.bdate && sameToday(p);
+      return '<tr class="' + (isToday ? 'today-row' : '') + '">' +
+        '<td class="cell-num">' + (i + 1) + '</td>' +
+        '<td class="cell-muted cell-days">' + esc(f.receivedAtText || '') + '</td>' +
+        '<td class="' + (p.name ? 'cell-name' : 'cell-muted') + '">' + (p.name ? esc(p.name) : '— не распознано') + '</td>' +
+        '<td>' + (p.group ? '<span class="badge badge-cls">' + esc(p.group) + '</span>' : '<span class="cell-muted">—</span>') + '</td>' +
+        '<td class="cell-muted">' + (p.bdate ? esc(p.bdate) + (isToday ? ' <span class="badge badge-today">сегодня</span>' : '') : '—') + '</td>' +
+        '<td class="cell-mono">' + esc(f.filename) + '<br><span class="muted small">' + bytes(f.size) + ' · ' + esc(f.encoding || '') + '</span></td>' +
+        '<td>' +
+          '<div class="row-actions">' +
+            '<a class="btn btn-ghost btn-sm" href="/api/admin/inbox/' + esc(f.id) + '/file?key=' + encodeURIComponent(key) + '" download title="Скачать исходный файл">⬇</a>' +
+            '<button class="btn btn-ghost btn-sm" type="button" data-view="' + esc(f.id) + '" title="Показать текст">👁</button>' +
+            '<button class="btn btn-ghost btn-sm" type="button" data-del="' + esc(f.id) + '" title="Удалить файл">✕</button>' +
+          '</div>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function sameToday(p) {
+    if (!p.day || !p.month) return false;
+    var n = new Date();
+    return (n.getMonth() + 1) === p.month && n.getDate() === p.day;
+  }
+
+  $('inboxSearch').addEventListener('input', renderInbox);
+  $('refreshBtn').addEventListener('click', function () { loadAll(); });
+
+  $('inboxBody').addEventListener('click', function (e) {
+    var view = e.target.closest('[data-view]');
+    var del = e.target.closest('[data-del]');
+    if (view) {
+      var id = view.getAttribute('data-view');
+      api('/api/admin/inbox/' + id + '/text').then(function (d) {
+        openModal('Файл: ' + d.filename, d.text,
+          '/api/admin/inbox/' + id + '/file?key=' + encodeURIComponent(key), d.filename);
+      }).catch(function (err) { alert(err.message); });
+    }
+    if (del) {
+      var id2 = del.getAttribute('data-del');
+      var item = inbox.filter(function (f) { return f.id === id2; })[0];
+      var label = item && item.parsed && item.parsed.name ? item.parsed.name : (item ? item.filename : 'файл');
+      if (!confirm('Удалить файл «' + label + '»? Запись из списка дней рождения тоже исчезнет.')) return;
+      api('/api/admin/inbox/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id2 })
+      }).then(function () { loadAll(); }).catch(function (err) { alert(err.message); });
+    }
+  });
+
+  $('zipBtn').addEventListener('click', function () {
+    if (!inbox.length) { alert('Входящих файлов пока нет.'); return; }
+    window.location.href = '/api/admin/inbox/zip?key=' + encodeURIComponent(key);
+  });
+
+  $('allTxtBtn').addEventListener('click', function () {
+    if (!inbox.length) { alert('Входящих файлов пока нет.'); return; }
+    fetch('/api/admin/inbox/all-txt?key=' + encodeURIComponent(key))
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        openModal('Все полученные файлы (.txt)', text,
+          '/api/admin/inbox/all-txt?key=' + encodeURIComponent(key), 'birthday-files.txt');
+      });
+  });
+
+  $('clearInboxBtn').addEventListener('click', function () {
+    if (!inbox.length) return;
+    if (!confirm('Удалить ВСЕ входящие файлы (' + inbox.length + ')? Список дней рождения очистится.')) return;
+    if (!confirm('Точно удалить? Файлы будут стёрты с сервера.')) return;
+    api('/api/admin/inbox/clear', { method: 'POST' }).then(function () { loadAll(); })
+      .catch(function (err) { alert(err.message); });
+  });
+
+  /* ---------------- отрисовка: список ---------------- */
+  function currentEntries() {
+    var q = $('search').value.trim().toLowerCase();
+    var g = $('groupFilter').value;
+    var sort = $('sortBy').value;
+    var list = entries.filter(function (e) {
+      if (g && e.group !== g) return false;
+      if (q && (e.name.toLowerCase().indexOf(q) === -1 && String(e.group || '').toLowerCase().indexOf(q) === -1)) return false;
+      return true;
+    });
+    if (sort === 'upcoming') list.sort(function (a, b) { return (a.daysUntil - b.daysUntil) || a.name.localeCompare(b.name, 'ru'); });
+    if (sort === 'date') list.sort(function (a, b) { return (a.month - b.month) || (a.day - b.day) || a.name.localeCompare(b.name, 'ru'); });
+    if (sort === 'name') list.sort(function (a, b) { return a.name.localeCompare(b.name, 'ru'); });
+    if (sort === 'group') list.sort(function (a, b) { return String(a.group).localeCompare(String(b.group), 'ru', { numeric: true }) || a.name.localeCompare(b.name, 'ru'); });
+    return list;
+  }
+
+  function renderEntries() {
+    var list = currentEntries();
+    $('listEmpty').hidden = list.length > 0;
+    $('listBody').innerHTML = list.map(function (e, i) {
+      var daysCell;
+      if (e.isToday) daysCell = '<span class="badge badge-today">🎉 сегодня</span>';
+      else if (e.daysUntil <= 30) daysCell = '<span class="badge badge-warn">через ' + e.daysUntil + ' ' + plural(e.daysUntil, 'день', 'дня', 'дней') + '</span>';
+      else daysCell = '<span class="badge badge-calm">через ' + e.daysUntil + ' ' + plural(e.daysUntil, 'день', 'дня', 'дней') + '</span>';
+      return '<tr class="' + (e.isToday ? 'today-row' : '') + '">' +
+        '<td class="cell-num">' + (i + 1) + '</td>' +
+        '<td class="cell-name">' + esc(e.name) + '</td>' +
+        '<td>' + (e.group ? '<span class="badge badge-cls">' + esc(e.group) + '</span>' : '<span class="cell-muted">—</span>') + '</td>' +
+        '<td class="cell-muted">' + esc(e.birthday) + '</td>' +
+        '<td class="cell-muted">' + (e.age === null ? '—' : e.age + ' ' + plural(e.age, 'год', 'года', 'лет')) + '</td>' +
+        '<td class="cell-muted cell-days">' + esc(e.nextDate) + '</td>' +
+        '<td>' + daysCell + '</td>' +
+        '<td><div class="row-actions"><button class="btn btn-ghost btn-sm" type="button" data-entry-del="' + esc(e.id) + '" title="Удалить из списка">✕</button></div></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  $('search').addEventListener('input', renderEntries);
+  $('groupFilter').addEventListener('change', renderEntries);
+  $('sortBy').addEventListener('change', renderEntries);
+
+  $('listBody').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-entry-del]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-entry-del');
+    var item = entries.filter(function (x) { return x.id === id; })[0];
+    if (!confirm('Удалить «' + (item ? item.name : '') + '» из списка?')) return;
+    api('/api/admin/entries/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id })
+    }).then(function () { loadAll(); }).catch(function (err) { alert(err.message); });
+  });
+
+  $('addForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('addName').value.trim();
+    var bd = $('addBdate').value;
+    $('addResult').textContent = '';
+    if (name.length < 2 || !bd) {
+      $('addResult').textContent = 'Заполните ФИО и дату рождения.';
+      $('addResult').className = 'import-result err';
+      return;
+    }
+    var p = bd.split('-');
+    api('/api/admin/entries/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, group: $('addGroup').value.trim(), bdate: p[2] + '.' + p[1] + '.' + p[0] })
+    }).then(function (d) {
+      $('addResult').textContent = d.duplicate ? 'Такой ученик уже есть в списке.' : 'Добавлено.';
+      $('addResult').className = 'import-result ' + (d.duplicate ? 'err' : 'ok');
+      $('addForm').reset();
+      loadAll();
+    }).catch(function (err) {
+      $('addResult').textContent = err.message;
+      $('addResult').className = 'import-result err';
+    });
+  });
+
+  function exportUrl(fmt) {
+    return '/api/admin/entries/export?format=' + fmt + '&sort=' + encodeURIComponent($('sortBy').value) +
+      '&key=' + encodeURIComponent(key);
+  }
+  $('downloadTxt').addEventListener('click', function () { window.location.href = exportUrl('txt'); });
+  $('downloadCsv').addEventListener('click', function () { window.location.href = exportUrl('csv'); });
+  $('showListBtn').addEventListener('click', function () {
+    fetch(exportUrl('txt')).then(function (r) { return r.text(); }).then(function (text) {
+      openModal('Список дней рождения (.txt)', text, exportUrl('txt'), 'birthdays.txt');
+    });
+  });
+
+  /* ---------------- bat ---------------- */
+  function siteUrl() {
+    var custom = $('publicUrl').value.trim().replace(/\/+$/, '');
+    return custom || ORIGIN;
+  }
+  function updateEndpoint() {
+    $('currentEndpoint').textContent = siteUrl() + '/api/upload';
+  }
+  $('publicUrl').addEventListener('input', updateEndpoint);
+
+  $('lanBox').addEventListener('click', function (e) {
+    var btn = e.target.closest('.lan-btn');
+    if (!btn) return;
+    $('publicUrl').value = btn.getAttribute('data-url');
+    updateEndpoint();
+    var status = $('batTextsStatus');
+    status.textContent = 'Адрес подставлен: ' + btn.getAttribute('data-url') + '. Теперь скачайте .bat заново.';
+    status.style.color = 'var(--green)';
+  });
+
+  $('downloadBat').addEventListener('click', function () {
+    window.location.href = '/api/admin/bat?url=' + encodeURIComponent(siteUrl()) +
+      '&enc=' + encodeURIComponent($('batEnc').value) + '&key=' + encodeURIComponent(key);
+  });
+
+  $('previewBat').addEventListener('click', function () {
+    fetch('/api/admin/bat-preview?url=' + encodeURIComponent(siteUrl()) + '&key=' + encodeURIComponent(key))
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        openModal('bat-файл (кодировка UTF-8 для просмотра)', text, null, null);
+      });
+  });
+
+  $('copyCurrentEndpoint').addEventListener('click', function () {
+    copyText(siteUrl() + '/api/upload', $('copyCurrentEndpoint'));
+  });
+
+  /* ---------------- настройки ---------------- */
+  $('settingsForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var body = {
+      schoolName: $('schoolNameInput').value.trim(),
+      groupLabel: $('groupLabelInput').value.trim(),
+      publicUrl: $('publicUrl').value.trim(),
+      batTexts: collectBatTexts(),
+    };
+    var pass = $('passwordInput').value;
+    if (pass.trim()) body.adminPassword = pass.trim();
+
+    api('/api/admin/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (d) {
+      $('settingsResult').textContent = d.note ? 'Сохранено. ' + d.note : (pass.trim() ? 'Сохранено. Пароль изменён — не забудьте его!' : 'Сохранено.');
+      $('settingsResult').className = 'import-result ok';
+      $('passwordInput').value = '';
+      if (pass.trim()) key = pass.trim();
+      loadAll();
+    }).catch(function (err) {
+      $('settingsResult').textContent = err.message;
+      $('settingsResult').className = 'import-result err';
+    });
+  });
+
+  /* ---------------- модальное окно ---------------- */
+  function openModal(title, text, downloadUrl, downloadName) {
+    $('modalTitle').textContent = title;
+    $('modalPre').textContent = text;
+    var a = $('modalDownload');
+    if (downloadUrl) {
+      a.href = downloadUrl;
+      a.setAttribute('download', downloadName || 'file.txt');
+      a.style.display = '';
+    } else {
+      a.style.display = 'none';
+    }
+    $('modal').hidden = false;
+  }
+  $('modalClose').addEventListener('click', function () { $('modal').hidden = true; });
+  $('modal').addEventListener('click', function (e) { if (e.target === $('modal')) $('modal').hidden = true; });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') $('modal').hidden = true; });
+
+  $('copyBtn').addEventListener('click', function () {
+    copyText($('modalPre').textContent, $('copyBtn'), 'Скопировать');
+  });
+
+  function copyText(text, btn, label) {
+    label = label || btn.textContent;
+    var done = function () {
+      btn.textContent = 'Скопировано ✓';
+      setTimeout(function () { btn.textContent = label; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fallback);
+    } else { fallback(); }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch (_) { /* ignore */ }
+      document.body.removeChild(ta);
+    }
+  }
+})();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a51a7a6e2eb2ef36',t:'MTc5MzE5NjE0Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
