@@ -22,7 +22,31 @@ const crypto = require('crypto');
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const ROOT = __dirname;
-const PUBLIC_DIR = path.join(ROOT, 'public');
+/* Папку с сайтом ищем в нескольких местах: если проект загружен на GitHub
+   вместе с лишней вложенной папкой, сервер всё равно её найдёт. */
+function resolvePublicDir() {
+  const candidates = [
+    path.join(ROOT, 'public'),
+    path.join(ROOT, 'birthday-site', 'public'),
+    path.join(ROOT, 'app', 'public'),
+    path.join(ROOT, 'src', 'public'),
+    ROOT, // если GitHub «расплющил» папку и index.html лежит в корне
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, 'index.html'))) return dir;
+  }
+  // на всякий случай — поиск на один уровень вглубь
+  try {
+    for (const entry of fs.readdirSync(ROOT, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const dir = path.join(ROOT, entry.name, 'public');
+      if (fs.existsSync(path.join(dir, 'index.html'))) return dir;
+    }
+  } catch (_) { /* нет доступа — не важно */ }
+  const fallback = path.join(ROOT, 'public');
+  return fs.existsSync(fallback) ? fallback : null;
+}
+let PUBLIC_DIR = resolvePublicDir();
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'data');
 const INBOX_DIR = path.join(DATA_DIR, 'inbox');
 const INBOX_JSON = path.join(DATA_DIR, 'inbox.json');
@@ -1079,14 +1103,84 @@ function publicItem(item) {
   };
 }
 
+/* Если папка с сайтом не найдена — показываем понятную инструкцию, а не «404» */
+function diagnosticPage() {
+  let tree = '';
+  try {
+    const walk = (dir, prefix, depth) => {
+      if (depth > 2) return;
+      const items = fs.readdirSync(dir, { withFileTypes: true }).slice(0, 40);
+      for (const it of items) {
+        if (it.name === 'node_modules' || it.name === '.git' || it.name === 'data') continue;
+        tree += prefix + (it.isDirectory() ? '[папка] ' : '[файл]  ') + it.name + '\n';
+        if (it.isDirectory()) walk(path.join(dir, it.name), prefix + '   ', depth + 1);
+      }
+    };
+    walk(ROOT, '', 0);
+  } catch (_) { tree = '(не удалось прочитать папку проекта)'; }
+
+  const files = inbox.length;
+  return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сайт работает, но не хватает папки public</title>
+<style>
+  body{margin:0;padding:32px 18px;font:16px/1.55 -apple-system,Segoe UI,Roboto,Arial,sans-serif;
+       background:linear-gradient(160deg,#f6f2ff,#eef4ff);color:#1a1430}
+  .box{max-width:760px;margin:0 auto;background:#fff;border:1px solid #ebe5f7;border-radius:22px;
+       box-shadow:0 24px 55px -32px rgba(52,26,110,.55);padding:28px}
+  h1{margin:0 0 6px;font-size:23px}
+  .ok{display:inline-block;background:#e6f8f2;color:#0b6b52;border-radius:999px;padding:4px 11px;
+      font-size:13px;font-weight:650;margin-bottom:14px}
+  .bad{display:inline-block;background:#fdecec;color:#b53434;border-radius:999px;padding:4px 11px;
+       font-size:13px;font-weight:650;margin-bottom:14px}
+  ol{padding-left:22px} li{margin-bottom:9px}
+  code{background:#f5f1ff;color:#5b21b6;padding:2px 6px;border-radius:6px;font-size:13.5px;
+       font-family:ui-monospace,Menlo,Consolas,monospace}
+  pre{background:#faf8ff;border:1px solid #ebe5f7;border-radius:12px;padding:14px;font-size:12.5px;
+      overflow:auto;max-height:260px;color:#3b3355}
+  .muted{color:#8f88a6;font-size:13.5px}
+  a{color:#6d28d9}
+</style></head><body><div class="box">
+  <div class="ok">✓ Сервер работает</div>
+  <h1>Не хватает файлов сайта (папки <code>public</code>)</h1>
+  <p>Скрипт <code>server.js</code> запустился успешно, но рядом с ним нет папки <code>public</code>
+     с файлами <code>index.html</code>, <code>admin.html</code>, <code>style.css</code>.
+     Поэтому показать страницу нечего.</p>
+  <p><b>Как исправить (2 минуты):</b></p>
+  <ol>
+    <li>Откройте свой репозиторий на GitHub.</li>
+    <li>Кнопка <b>Add file → Upload files</b>.</li>
+    <li>Перетащите туда папку <code>public</code> <b>целиком</b> (из распакованного архива
+        <code>birthday-site</code>) и нажмите <b>Commit changes</b>.</li>
+    <li>Подождите 1–2 минуты: Render пересоберёт сайт автоматически.
+        Обновите эту страницу — появится анкета.</li>
+  </ol>
+  <p class="muted">Проверить, что сервер в порядке, можно по адресу <code>/healthz</code> —
+     он всегда отвечает JSON. Файлов уже получено: <b>${files}</b>.</p>
+  <p><b>Что сейчас лежит в папке проекта на сервере:</b></p>
+  <pre>${tree.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>
+</div></body></html>`;
+}
+
 function serveStatic(req, res, pathname) {
+  if (!PUBLIC_DIR) {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    return res.end(diagnosticPage());
+  }
   let rel = decodeURIComponent(pathname);
   if (rel === '/') rel = '/index.html';
   if (rel === '/admin' || rel === '/admin/') rel = '/admin.html';
   const filePath = path.join(PUBLIC_DIR, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
   if (!filePath.startsWith(PUBLIC_DIR)) return sendText(res, 403, 'Доступ запрещён');
   fs.readFile(filePath, (err, data) => {
-    if (err) return sendText(res, 404, 'Страница не найдена');
+    if (err) {
+      const isRoot = (rel === '/index.html' || rel === '/admin.html');
+      if (isRoot) {
+        res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        return res.end(diagnosticPage());
+      }
+      return sendText(res, 404, 'Страница не найдена');
+    }
     const ext = path.extname(filePath).toLowerCase();
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
